@@ -18,9 +18,9 @@ build: pull clean
 	docker build -t $(IMAGE_NAME):$(TAG) .
 
 run: build
-	@echo "🚀 Running container (port 3000)..."
+	@echo "🚀 Running container (port 3123)..."
 	@docker rm -f $(IMAGE_NAME) 2>/dev/null || true
-	docker run -d --name $(IMAGE_NAME) -p 3000:3000 $(IMAGE_NAME):$(TAG)
+	docker run -d --name $(IMAGE_NAME) -p 3123:3123 $(IMAGE_NAME):$(TAG)
 
 test: build
 	@echo "🧪 Testing container starts and responds..."
