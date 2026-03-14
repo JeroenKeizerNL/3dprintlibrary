@@ -55,6 +55,8 @@ header {
   align-items: center;
   gap: 6px;
   font-size: 14px;
+  line-height: 1.2;
+  min-height: 20px;
   color: #c0c0c0;
   flex-wrap: wrap;
 }
