@@ -46,7 +46,7 @@ clean:
 	-docker rmi -f $(IMAGE_NAME):$(TAG) 2>/dev/null || true
 	-docker rmi -f $(DOCKER_REGISTRY)/$(DOCKER_USERNAME)/$(IMAGE_NAME):$(TAG) 2>/dev/null || true
 	-docker rmi -f $(GITHUB_REGISTRY)/$(GITHUB_USERNAME)/$(IMAGE_NAME):$(TAG) 2>/dev/null || true
-
+	-docker rmi -f curlimages/curl:latest 2>/dev/null || true	
 shell: run
 	@docker exec -it $(IMAGE_NAME) /bin/sh
 
