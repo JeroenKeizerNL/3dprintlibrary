@@ -25,9 +25,9 @@ run: build
 test: build
 	@echo "🧪 Testing container starts and responds..."
 	@docker rm -f $(IMAGE_NAME) 2>/dev/null || true
-	docker run -d --name $(IMAGE_NAME) -p 3000:3000 $(IMAGE_NAME):$(TAG)
+	docker run -d --name $(IMAGE_NAME) -p 3123:3123 $(IMAGE_NAME):$(TAG)
 	@sleep 2
-	@docker run --rm --network host curlimages/curl -sS -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q '^2' && echo "✅ OK" || (echo "❌ Failed to reach server" && exit 1)
+	@docker run --rm --network host curlimages/curl -sS -o /dev/null -w "%{http_code}" http://localhost:3123 | grep -q '^2' && echo "✅ OK" || (echo "❌ Failed to reach server" && exit 1)
 	@docker rm -f $(IMAGE_NAME)
 
 publish: test
