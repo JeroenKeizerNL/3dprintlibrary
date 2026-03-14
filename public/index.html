@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3DPrintLibrary</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="header-top">
+        <div id="logo" class="logo" aria-hidden="true"></div>
+        <div class="product-title">3DPrintLibrary</div>
+      </div>
+      <div class="header-bottom">
+        <nav id="breadcrumb" class="breadcrumb"></nav>
+      </div>
+    </header>
+    <main>
+      <div id="grid"></div>
+      <div id="flyout" class="hidden">
+        <div id="readme-content"></div>
+      </div>
+    </main>
+
+    <div id="modal" class="hidden">
+      <div id="modal-overlay"></div>
+      <div id="modal-content">
+        <button id="modal-close" aria-label="Close">✕</button>
+        <div id="modal-body"></div>
+        <div id="modal-footer" class="modal-footer"></div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
