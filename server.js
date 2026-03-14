@@ -29,6 +29,15 @@ app.get(rootRoutes, (req, res) => {
 
 app.use(BASE_URL, express.static(path.join(__dirname, 'public')));
 
+// API health endpoint for container/orchestrator checks
+app.get(BASE_URL + '/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+  });
+});
+
 // API to list files in a directory
 app.get(BASE_URL + '/api/files', (req, res) => {
   const dirPath = req.query.path || '';
@@ -133,7 +142,6 @@ app.get(BASE_URL + '/api/files', (req, res) => {
           }
         }
 
-        console.log(`Background for folder ${file}: ${JSON.stringify(background)}`);
         items.push({ name: file, type: 'folder', path: path.join(dirPath, file), background });
       } else if (supported3D.includes(ext)) {
         const background = { type: '3d', url: path.join(DATA_ROUTE, dirPath, file) };

@@ -27,6 +27,13 @@ A lightweight web application for browsing 3D print files in a directory structu
    - `BASE_URL`: Base URL path if running behind a reverse proxy (e.g., `/myapp`)
    - `PORT`: Port to listen on (default: 3123)
    - `DATA_DIR`: Path to the data directory inside the container (default: `/data`)
+   - `PUID`: Run the app process as this user ID inside the container
+   - `PGID`: Run the app process as this group ID inside the container
+   - `TZ`: Timezone, for example `Europe/Amsterdam`
+
+   Health endpoint:
+   - `GET /api/health` (or `GET <BASE_URL>/api/health` when `BASE_URL` is set)
+   - Docker image includes a built-in `HEALTHCHECK` that calls this endpoint
 
 3. Open http://localhost:3123 in your browser.
 
