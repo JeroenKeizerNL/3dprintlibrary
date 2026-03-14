@@ -19,6 +19,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/server.js ./
 COPY --from=builder /app/public ./public
 
-EXPOSE 3000
+EXPOSE 3123
 
 CMD ["node", "server.js"]

@@ -4,7 +4,7 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3123;
 const DATA_DIR = process.env.DATA_DIR || '/data';
 
 app.use(cors());
