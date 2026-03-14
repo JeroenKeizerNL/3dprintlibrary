@@ -171,7 +171,7 @@ function loadPath(path, { replace = false } = {}) {
   const title = '3DPrintLibrary' + (titleParts.length > 0 ? ' - ' + titleParts.join(' > ') : ' - Main Library');
   document.title = title;
 
-  fetch(`/api/files?path=${encodeURIComponent(path)}`)
+  fetch(`${window.BASE_URL}/api/files?path=${encodeURIComponent(path)}`)
     .then(res => res.json())
     .then(data => {
       renderBreadcrumb(data.currentPath);

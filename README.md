@@ -20,10 +20,15 @@ A lightweight web application for browsing 3D print files in a directory structu
 
 2. Run the container, mounting your 3D library directory:
    ```
-   docker run -p 3000:3000 -v /path/to/your/3d/library:/data 3dprintlibrary
+   docker run -p 3123:3123 -v /path/to/your/3d/library:/data 3dprintlibrary
    ```
 
-3. Open http://localhost:3000 in your browser.
+   Optional environment variables:
+   - `BASE_URL`: Base URL path if running behind a reverse proxy (e.g., `/myapp`)
+   - `PORT`: Port to listen on (default: 3123)
+   - `DATA_DIR`: Path to the data directory inside the container (default: `/data`)
+
+3. Open http://localhost:3123 in your browser.
 
 ## File Structure
 

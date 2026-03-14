@@ -6,12 +6,31 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3123;
 const DATA_DIR = process.env.DATA_DIR || '/data';
+const BASE_URL = process.env.BASE_URL || '';
+const DATA_ROUTE = BASE_URL + '/data';
 
 app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve index.html dynamically to inject BASE_URL (handles both /base and /base/)
+const rootRoutes = BASE_URL ? [BASE_URL, BASE_URL + '/'] : ['/'];
+app.get(rootRoutes, (req, res) => {
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  fs.readFile(indexPath, 'utf8', (err, data) => {
+    if (err) {
+      return res.status(500).send('Error loading index.html');
+    }
+    const baseTag = BASE_URL ? `<base href="${BASE_URL}/">` : '';
+    const modifiedHtml = data
+      .replace('{{BASE_TAG}}', baseTag)
+      .replace('{{BASE_URL}}', BASE_URL);
+    res.send(modifiedHtml);
+  });
+});
+
+app.use(BASE_URL, express.static(path.join(__dirname, 'public')));
 
 // API to list files in a directory
-app.get('/api/files', (req, res) => {
+app.get(BASE_URL + '/api/files', (req, res) => {
   const dirPath = req.query.path || '';
   const fullPath = path.join(DATA_DIR, dirPath);
 
@@ -52,7 +71,7 @@ app.get('/api/files', (req, res) => {
           }
         }
         if (coverFile) {
-          background = { type: 'image', url: path.join('/data', dirPath, file, coverFile) };
+          background = { type: 'image', url: path.join(DATA_ROUTE, dirPath, file, coverFile) };
         } else {
           // 2) First image in this folder
           const folderPath = path.join(fullPath, file);
@@ -60,7 +79,7 @@ app.get('/api/files', (req, res) => {
             const folderFiles = fs.readdirSync(folderPath);
             const firstImage = folderFiles.find(f => imageExts.includes(path.extname(f).toLowerCase()));
             if (firstImage) {
-              background = { type: 'image', url: path.join('/data', dirPath, file, firstImage) };
+              background = { type: 'image', url: path.join(DATA_ROUTE, dirPath, file, firstImage) };
             } else {
               // 3) First 3D in this folder (prefer STL -> OBJ -> SKP; SCAD is treated as preview-unavailable)
               let first3D = null;
@@ -69,7 +88,7 @@ app.get('/api/files', (req, res) => {
                 if (first3D) break;
               }
               if (first3D) {
-                background = { type: '3d', url: path.join('/data', dirPath, file, first3D) };
+                background = { type: '3d', url: path.join(DATA_ROUTE, dirPath, file, first3D) };
               } else {
                 // 4) If none found, scan immediate subfolders for cover/image/3D
                 for (const sub of folderFiles) {
@@ -81,7 +100,7 @@ app.get('/api/files', (req, res) => {
                   for (const c of coverFiles) {
                     const p = path.join(subPath, c);
                     if (fs.existsSync(p)) {
-                      background = { type: 'image', url: path.join('/data', dirPath, file, sub, c) };
+                      background = { type: 'image', url: path.join(DATA_ROUTE, dirPath, file, sub, c) };
                       found = true;
                       break;
                     }
@@ -92,7 +111,7 @@ app.get('/api/files', (req, res) => {
                   const subFiles = fs.readdirSync(subPath);
                   const subImage = subFiles.find(f => imageExts.includes(path.extname(f).toLowerCase()));
                   if (subImage) {
-                    background = { type: 'image', url: path.join('/data', dirPath, file, sub, subImage) };
+                    background = { type: 'image', url: path.join(DATA_ROUTE, dirPath, file, sub, subImage) };
                     break;
                   }
 
@@ -103,7 +122,7 @@ app.get('/api/files', (req, res) => {
                     if (sub3D) break;
                   }
                   if (sub3D) {
-                    background = { type: '3d', url: path.join('/data', dirPath, file, sub, sub3D) };
+                    background = { type: '3d', url: path.join(DATA_ROUTE, dirPath, file, sub, sub3D) };
                     break;
                   }
                 }
@@ -117,27 +136,27 @@ app.get('/api/files', (req, res) => {
         console.log(`Background for folder ${file}: ${JSON.stringify(background)}`);
         items.push({ name: file, type: 'folder', path: path.join(dirPath, file), background });
       } else if (supported3D.includes(ext)) {
-        const background = { type: '3d', url: path.join('/data', dirPath, file) };
+        const background = { type: '3d', url: path.join(DATA_ROUTE, dirPath, file) };
         items.push({
           name: file,
           type: 'file',
           subtype: '3d',
           ext,
           path: path.join(dirPath, file),
-          url: path.join('/data', dirPath, file),
+          url: path.join(DATA_ROUTE, dirPath, file),
           size: stat.size,
           mtime: stat.mtimeMs,
           background,
         });
       } else if (supportedImage.includes(ext)) {
-        const background = { type: 'image', url: path.join('/data', dirPath, file) };
+        const background = { type: 'image', url: path.join(DATA_ROUTE, dirPath, file) };
         items.push({
           name: file,
           type: 'file',
           subtype: 'image',
           ext,
           path: path.join(dirPath, file),
-          url: path.join('/data', dirPath, file),
+          url: path.join(DATA_ROUTE, dirPath, file),
           size: stat.size,
           mtime: stat.mtimeMs,
           background,
@@ -184,7 +203,7 @@ app.get('/api/files', (req, res) => {
 });
 
 // Serve files from data directory
-app.use('/data', express.static(DATA_DIR));
+app.use(DATA_ROUTE, express.static(DATA_DIR));
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
