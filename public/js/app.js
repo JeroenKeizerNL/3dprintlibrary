@@ -88,15 +88,21 @@ function render3DModal(url, canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setSize(canvas.width, canvas.height);
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
+  const camera = new THREE.PerspectiveCamera(45, canvas.width / canvas.height, 0.1, 1000);
   camera.position.set(0, 0, 5);
 
-  const light = new THREE.DirectionalLight(0xffffff, 1);
-  light.position.set(1, 1, 1);
+  const light = new THREE.DirectionalLight(0xffffff, 1.2);
+  light.position.set(1, 2, 1);
   scene.add(light);
+
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+  fillLight.position.set(-1, 0.5, -1);
+  scene.add(fillLight);
 
   const ambient = new THREE.AmbientLight(0xffffff, 0.5);
   scene.add(ambient);
+
+  scene.background = new THREE.Color(0x888888);
 
   const ext = url.split('.').pop().toLowerCase();
   let loader;
@@ -130,11 +136,21 @@ function render3DModal(url, canvas) {
     const box = new THREE.Box3().setFromObject(mesh);
     const center = box.getCenter(new THREE.Vector3());
     mesh.position.sub(center);
-    const size = box.getSize(new THREE.Vector3());
+
+    // 3D printing files are typically Z-up while Three.js is Y-up.
+    mesh.rotation.x = -Math.PI / 2;
+
+    // Re-center after rotation so orbit target and framing stay accurate.
+    const box2 = new THREE.Box3().setFromObject(mesh);
+    const center2 = box2.getCenter(new THREE.Vector3());
+    mesh.position.sub(center2);
+
+    const size = box2.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
     const fov = camera.fov * (Math.PI / 180);
-    const cameraZ = maxDim / Math.sin(fov / 2) * 2;
-    camera.position.set(0, 0, cameraZ);
+    const cameraZ = maxDim / Math.sin(fov / 2) * 1;
+    const iso = 1 / Math.sqrt(3);
+    camera.position.set(cameraZ * iso, cameraZ * iso, cameraZ * iso);
     camera.lookAt(0, 0, 0);
 
     const controls = new THREE.OrbitControls(camera, canvas);
@@ -296,16 +312,83 @@ function renderGrid(items) {
     name.textContent = item.name;
     content.appendChild(name);
 
+    grid.appendChild(tile);
+
     if (item.background) {
       if (item.background.type === 'image') {
-        tile.style.backgroundImage = `url(${encodeURI(item.background.url)})`;
+        applyImageBackground(tile, item.background.url);
       } else if (item.background.type === '3d') {
         render3DThumbnail(item.background.url, tile);
       }
     }
-
-    grid.appendChild(tile);
   });
+}
+
+function applyImageBackground(tile, imageUrl) {
+  const encodedUrl = encodeURI(imageUrl);
+  const { media, foreground } = ensureTileMedia(tile);
+
+  tile.classList.add('has-image-cover');
+  tile.style.backgroundImage = 'none';
+
+  foreground.onload = () => {
+    requestAnimationFrame(() => {
+      const rect = tile.getBoundingClientRect();
+      const tileWidth = Math.max(rect.width || 0, 300);
+      const tileHeight = Math.max(rect.height || 0, 220);
+      const isTooSmall = foreground.naturalWidth < tileWidth || foreground.naturalHeight < tileHeight;
+
+      if (isTooSmall) {
+        tile.classList.add('image-cover-small');
+        tile.classList.remove('image-cover-large');
+        return;
+      }
+
+      tile.classList.remove('image-cover-small');
+      tile.classList.add('image-cover-large');
+    });
+  };
+
+  foreground.onerror = () => {
+    tile.classList.remove('has-image-cover');
+    tile.classList.remove('image-cover-small');
+    tile.classList.remove('image-cover-large');
+    if (media.parentNode === tile) {
+      tile.removeChild(media);
+    }
+    tile.style.backgroundImage = `url(${encodedUrl})`;
+  };
+
+  const backdrop = media.querySelector('.tile-media-backdrop');
+  backdrop.src = encodedUrl;
+  foreground.src = encodedUrl;
+}
+
+function ensureTileMedia(tile) {
+  let media = tile.querySelector('.tile-media');
+  if (!media) {
+    media = document.createElement('div');
+    media.className = 'tile-media';
+
+    const backdrop = document.createElement('img');
+    backdrop.className = 'tile-media-backdrop';
+    backdrop.alt = '';
+    backdrop.decoding = 'async';
+
+    const foreground = document.createElement('img');
+    foreground.className = 'tile-media-foreground';
+    foreground.alt = '';
+    foreground.decoding = 'async';
+
+    media.appendChild(backdrop);
+    media.appendChild(foreground);
+    tile.insertBefore(media, tile.firstChild);
+  }
+
+  const backdrop = media.querySelector('.tile-media-backdrop');
+  const foreground = media.querySelector('.tile-media-foreground');
+
+  return { media, backdrop, foreground };
 }
 
 function render3DThumbnail(url, tile) {
@@ -315,19 +398,19 @@ function render3DThumbnail(url, tile) {
   const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: true });
   renderer.setSize(300, 200);
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+  const camera = new THREE.PerspectiveCamera(45, 300 / 200, 0.1, 1000);
   camera.position.set(0, 0, 5);
-  const light = new THREE.DirectionalLight(0xffffff, 1);
-  light.position.set(1, 1, 1);
+  const light = new THREE.DirectionalLight(0xffffff, 1.2);
+  light.position.set(1, 2, 1);
   scene.add(light);
+
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+  fillLight.position.set(-1, 0.5, -1);
+  scene.add(fillLight);
 
   // Add ambient light so the model is visible
   const ambient = new THREE.AmbientLight(0xffffff, 0.5);
   scene.add(ambient);
-
-  // Add a subtle gradient background in Scene (works in case composite fails)
-  const bg = new THREE.Color(0x1b1f25);
-  scene.background = bg;
 
   const ext = url.split('.').pop().toLowerCase();
   let loader;
@@ -368,11 +451,21 @@ function render3DThumbnail(url, tile) {
     const box = new THREE.Box3().setFromObject(mesh);
     const center = box.getCenter(new THREE.Vector3());
     mesh.position.sub(center);
-    const size = box.getSize(new THREE.Vector3());
+
+    // 3D printing files use Z-up; Three.js is Y-up — rotate -90° around X to correct
+    mesh.rotation.x = -Math.PI / 2;
+
+    // Re-center after rotation: rotating a non-origin-centred geometry shifts the world centroid
+    const box2 = new THREE.Box3().setFromObject(mesh);
+    const center2 = box2.getCenter(new THREE.Vector3());
+    mesh.position.sub(center2);
+
+    const size = box2.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
     const fov = camera.fov * (Math.PI / 180);
-    const cameraZ = maxDim / Math.sin(fov / 2) * 1.5;
-    camera.position.set(0, 0, cameraZ);
+    const cameraZ = maxDim / Math.sin(fov / 2) * 0.75;
+    const iso = 1 / Math.sqrt(3);
+    camera.position.set(cameraZ * iso, cameraZ * iso, cameraZ * iso);
     camera.lookAt(0, 0, 0);
 
     // Render to WebGL canvas then composite with gradient
@@ -386,8 +479,8 @@ function render3DThumbnail(url, tile) {
       return;
     }
     const grad = ctx.createLinearGradient(0, 0, 0, 200);
-    grad.addColorStop(0, '#000000');
-    grad.addColorStop(1, '#5D5D5D');
+    grad.addColorStop(0, '#888888');
+    grad.addColorStop(1, '#888888');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 300, 200);
     ctx.drawImage(glCanvas, 0, 0);
