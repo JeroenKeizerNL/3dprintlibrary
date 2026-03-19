@@ -32,17 +32,77 @@ function resolveDataPath(relativePath) {
     : DATA_DIR;
 }
 
+function isSameOrSubpath(parentPath, childPath) {
+  const relative = path.relative(parentPath, childPath);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function resolveSafeDataPath(relativePath) {
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(String(relativePath || ''));
+  } catch {
+    return null;
+  }
+
+  const normalized = normalizeRelativePath(decodedPath);
+  const segments = normalized ? normalized.split('/') : [];
+
+  if (segments.some(segment => segment === '.' || segment === '..' || segment.includes('\0'))) {
+    return null;
+  }
+
+  const dataRoot = path.resolve(DATA_DIR);
+  const resolvedPath = path.resolve(dataRoot, ...segments);
+
+  // Core traversal guard: final resolved path must be dataRoot itself or inside it.
+  if (!isSameOrSubpath(dataRoot, resolvedPath)) {
+    return null;
+  }
+
+  // If paths exist, compare canonical paths too to avoid symlink-based escapes.
+  let canonicalRoot = dataRoot;
+  let canonicalResolved = resolvedPath;
+
+  try {
+    canonicalRoot = fs.realpathSync.native ? fs.realpathSync.native(dataRoot) : fs.realpathSync(dataRoot);
+  } catch {
+    // Keep lexical path fallback when root canonicalization is unavailable.
+  }
+
+  if (fs.existsSync(resolvedPath)) {
+    try {
+      canonicalResolved = fs.realpathSync.native ? fs.realpathSync.native(resolvedPath) : fs.realpathSync(resolvedPath);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!isSameOrSubpath(canonicalRoot, canonicalResolved)) {
+    return null;
+  }
+
+  return {
+    normalized,
+    fullPath: resolvedPath,
+  };
+}
+
 app.use(cors());
 
 // Serve index.html dynamically to inject BASE_URL (handles both /base and /base/)
 const rootRoutes = BASE_URL ? [BASE_URL, BASE_URL + '/'] : ['/'];
-app.get(rootRoutes, (req, res) => {
+const browseRoutes = BASE_URL
+  ? [BASE_URL + '/browse', BASE_URL + '/browse/*']
+  : ['/browse', '/browse/*'];
+
+app.get([...rootRoutes, ...browseRoutes], (req, res) => {
   const indexPath = path.join(__dirname, 'public', 'index.html');
   fs.readFile(indexPath, 'utf8', (err, data) => {
     if (err) {
       return res.status(500).send('Error loading index.html');
     }
-    const baseTag = BASE_URL ? `<base href="${BASE_URL}/">` : '';
+    const baseTag = `<base href="${BASE_URL ? BASE_URL + '/' : '/'}">`;
     const modifiedHtml = data
       .replace('{{BASE_TAG}}', baseTag)
       .replace('{{BASE_URL}}', BASE_URL);
@@ -63,8 +123,13 @@ app.get(BASE_URL + '/api/health', (req, res) => {
 
 // API to list files in a directory
 app.get(BASE_URL + '/api/files', (req, res) => {
-  const dirPath = normalizeRelativePath(req.query.path || '');
-  const fullPath = resolveDataPath(dirPath);
+  const resolved = resolveSafeDataPath(req.query.path || '');
+  if (!resolved) {
+    return res.status(400).json({ error: 'Invalid path' });
+  }
+
+  const dirPath = resolved.normalized;
+  const fullPath = resolved.fullPath;
 
   if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isDirectory()) {
     return res.status(404).json({ error: 'Directory not found' });
@@ -82,6 +147,8 @@ app.get(BASE_URL + '/api/files', (req, res) => {
     // For cover-selection logic we prefer STL/OBJ/SKP over SCAD (SCAD is treated like SKB: preview missing)
     const supported3DForPreview = ['.stl', '.obj', '.skp'];
     const supportedImage = [...imageExts];
+
+    const folderHasModels = files.some(f => supported3D.includes(path.extname(f).toLowerCase()));
 
     files.forEach(file => {
       const filePath = path.join(fullPath, file);
@@ -180,6 +247,10 @@ app.get(BASE_URL + '/api/files', (req, res) => {
           background,
         });
       } else if (supportedImage.includes(ext)) {
+        // Suppress cover images from the tile grid when there are no model files in this folder.
+        const isCoverImage = coverFiles.some(c => c.toLowerCase() === file.toLowerCase());
+        if (isCoverImage && !folderHasModels) return;
+
         const background = { type: 'image', url: joinWebPath(DATA_ROUTE, dirPath, file) };
         items.push({
           name: file,
@@ -234,6 +305,15 @@ app.get(BASE_URL + '/api/files', (req, res) => {
 });
 
 // Serve files from data directory
+app.use(DATA_ROUTE, (req, res, next) => {
+  const resolved = resolveSafeDataPath(req.path || '');
+  if (!resolved) {
+    return res.status(400).json({ error: 'Invalid path' });
+  }
+
+  next();
+});
+
 app.use(DATA_ROUTE, express.static(DATA_DIR));
 
 app.listen(PORT, () => {

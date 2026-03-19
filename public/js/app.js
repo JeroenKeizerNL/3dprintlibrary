@@ -1,11 +1,119 @@
 let currentPath = '';
 let modalAnimationFrame = null;
+let isFlyoutCollapsed = false;
+
+function normalizeRelativePath(inputPath) {
+  return String(inputPath || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+}
+
+function getBasePathPrefix() {
+  const base = String(window.BASE_URL || '').replace(/^\/+|\/+$/g, '');
+  return base ? `/${base}` : '';
+}
+
+function decodePathSegments(inputPath) {
+  const trimmed = String(inputPath || '').replace(/^\/+|\/+$/g, '');
+  if (!trimmed) {
+    return '';
+  }
+
+  const decoded = trimmed
+    .split('/')
+    .filter(Boolean)
+    .map(segment => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join('/');
+
+  return normalizeRelativePath(decoded);
+}
+
+function getPathFromLocation() {
+  const url = new URL(window.location.href);
+  const basePrefix = getBasePathPrefix();
+  let pathname = url.pathname;
+
+  if (basePrefix && pathname.toLowerCase().startsWith(basePrefix.toLowerCase())) {
+    pathname = pathname.slice(basePrefix.length) || '/';
+  }
+
+  if (pathname === '/browse' || pathname === '/browse/') {
+    return '';
+  }
+
+  if (pathname.startsWith('/browse/')) {
+    return decodePathSegments(pathname.slice('/browse/'.length));
+  }
+
+  return '';
+}
+
+function buildBrowseUrl(path) {
+  const normalized = normalizeRelativePath(path);
+  const encodedPath = normalized
+    ? normalized.split('/').map(segment => encodeURIComponent(segment)).join('/')
+    : '';
+  const browsePath = encodedPath ? `/browse/${encodedPath}` : '/browse';
+  return `${getBasePathPrefix()}${browsePath}`;
+}
 
 function init() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const path = urlParams.get('path') || '';
+  const path = getPathFromLocation();
+  initFlyoutToggle();
   initModal();
   loadPath(path, { replace: true });
+}
+
+function initFlyoutToggle() {
+  const toggleBtn = document.getElementById('flyout-toggle');
+  if (!toggleBtn) {
+    return;
+  }
+
+  const savedFlyoutState = window.localStorage.getItem('flyoutCollapsed');
+  if (savedFlyoutState === null) {
+    isFlyoutCollapsed = isMobileOrLowResDevice();
+  } else {
+    isFlyoutCollapsed = savedFlyoutState === 'true';
+  }
+
+  setFlyoutCollapsed(isFlyoutCollapsed);
+
+  toggleBtn.onclick = () => {
+    isFlyoutCollapsed = !isFlyoutCollapsed;
+    setFlyoutCollapsed(isFlyoutCollapsed);
+    window.localStorage.setItem('flyoutCollapsed', String(isFlyoutCollapsed));
+  };
+}
+
+function isMobileOrLowResDevice() {
+  return window.matchMedia('(max-width: 900px), (max-height: 700px), (pointer: coarse)').matches;
+}
+
+function setFlyoutCollapsed(collapsed) {
+  const flyout = document.getElementById('flyout');
+  const toggleBtn = document.getElementById('flyout-toggle');
+  if (!flyout || !toggleBtn) {
+    return;
+  }
+
+  flyout.classList.toggle('collapsed', collapsed);
+  toggleBtn.innerHTML = getFlyoutToggleIcon(collapsed);
+  toggleBtn.setAttribute('aria-label', collapsed ? 'Expand README panel' : 'Collapse README panel');
+  toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+}
+
+function getFlyoutToggleIcon(collapsed) {
+  // Collapsed panel expands left, expanded panel collapses right.
+  const iconPath = collapsed
+    ? 'M14.5 5.5L9 11l5.5 5.5 M9.5 5.5L4 11l5.5 5.5'
+    : 'M4 5.5L9.5 11 4 16.5 M9 5.5l5.5 5.5L9 16.5';
+
+  return `<svg viewBox="0 0 18 22" aria-hidden="true" focusable="false"><path d="${iconPath}"/></svg>`;
 }
 
 function initModal() {
@@ -171,23 +279,28 @@ function render3DModal(url, canvas) {
   });
 }
 
-function loadPath(path, { replace = false } = {}) {
-  currentPath = path;
-  const url = new URL(window.location);
-  url.searchParams.set('path', path);
+function loadPath(path, { replace = false, syncUrl = true } = {}) {
+  const normalizedPath = normalizeRelativePath(path);
+  currentPath = normalizedPath;
 
-  if (replace) {
-    window.history.replaceState({}, '', url);
-  } else {
-    window.history.pushState({}, '', url);
+  if (syncUrl) {
+    const url = new URL(window.location.href);
+    url.pathname = buildBrowseUrl(normalizedPath);
+    url.searchParams.delete('path');
+
+    if (replace) {
+      window.history.replaceState({}, '', url);
+    } else {
+      window.history.pushState({}, '', url);
+    }
   }
 
   // Update browser title
-  const titleParts = path ? path.split('/').filter(p => p) : [];
+  const titleParts = normalizedPath ? normalizedPath.split('/').filter(p => p) : [];
   const title = '3DPrintLibrary' + (titleParts.length > 0 ? ' - ' + titleParts.join(' > ') : ' - Main Library');
   document.title = title;
 
-  fetch(`${window.BASE_URL}/api/files?path=${encodeURIComponent(path)}`)
+  fetch(`${window.BASE_URL}/api/files?path=${encodeURIComponent(normalizedPath)}`)
     .then(res => res.json())
     .then(data => {
       renderBreadcrumb(data.currentPath);
@@ -516,13 +629,13 @@ function renderFlyout(readme, readmeType) {
     content.textContent = readme;
   }
 
+  setFlyoutCollapsed(isFlyoutCollapsed);
   flyout.classList.remove('hidden');
 }
 
 window.onload = init;
 
 window.addEventListener('popstate', () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const path = urlParams.get('path') || '';
-  loadPath(path, { replace: true });
+  const path = getPathFromLocation();
+  loadPath(path, { replace: true, syncUrl: false });
 });

@@ -326,6 +326,64 @@ main {
   border-left: 1px solid #333;
   padding: 10px;
   overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 0.2s ease, padding 0.2s ease;
+}
+
+#flyout.collapsed {
+  width: 44px;
+  padding: 10px 6px;
+}
+
+.flyout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.flyout-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+}
+
+#flyout-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+#flyout-toggle:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+#flyout-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+#flyout-toggle path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#flyout.collapsed .flyout-title,
+#flyout.collapsed #readme-content {
+  display: none;
 }
 
 .hidden {
