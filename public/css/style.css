@@ -21,13 +21,25 @@ header {
 .header-top {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .product-title {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 0.92;
+  font-family: "Segoe UI", Arial, sans-serif;
   font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  color: #e6e6e6;
+  margin-top: 8px;
+}
+
+.product-title span {
+  display: block;
+  white-space: nowrap;
 }
 
 .header-bottom {
@@ -39,15 +51,12 @@ header {
 }
 
 .logo {
-  width: 40px;
-  height: 40px;
-  background: none;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l7.53 3.64L12 11.45 4.47 7.82 12 4.18zM4 9.7l7 3.14v7.78L4 15.48V9.7zm8 11.92v-7.78l7-3.14v5.78l-7 3.14z'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l7.53 3.64L12 11.45 4.47 7.82 12 4.18zM4 9.7l7 3.14v7.78L4 15.48V9.7zm8 11.92v-7.78l7-3.14v5.78l-7 3.14z'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  background-color: #3794ff;
-  border-radius: 10px;
+  width: 64px;
+  height: 72px;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  flex: 0 0 auto;
 }
 
 .breadcrumb {
