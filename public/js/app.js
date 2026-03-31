@@ -625,6 +625,10 @@ function renderFlyout(readme, readmeType) {
 
   if (readmeType === 'md' && window.marked) {
     content.innerHTML = marked.parse(readme);
+    content.querySelectorAll('a').forEach((link) => {
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
+    });
   } else {
     content.textContent = readme;
   }
