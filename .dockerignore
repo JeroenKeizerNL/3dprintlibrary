@@ -13,6 +13,7 @@ yarn-error.log*
 # Ignore any data or large artifacts
 /data
 **/data
+/testdata
 
 # Ignore git
 .git
